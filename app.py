@@ -106,7 +106,7 @@ with st.sidebar:
                                 ["Hatchback", "Sedan", "SUV", "MPV", "Bakkie"],
                                 default=["Hatchback", "Sedan"])
     st.markdown("---")
-    st.caption("FleetWise SA v1.1 | NGOBE Portfolio 2024–2026")
+    st.caption("FleetWise SA v1.1 | NGOBE")
 
 # ─── LOAD ────────────────────────────────────────────────────────────────────
 models, df_full = load_models(selected_city, selected_year)
@@ -678,7 +678,7 @@ st.markdown("---")
 st.markdown("""
 <div style="text-align:center; color:rgba(255,255,255,0.3); font-size:0.8rem; padding:1rem;">
     FleetWise SA · Built with Python, Streamlit, Scikit-learn & Plotly ·
-    ALX Africa Data Science Portfolio 2024–2026 ·
+    ALX Africa Data Science Portfolio·
     Data sourced from AutoTrader SA, Uber estimates, DMPR fuel prices & SAIA benchmarks
 </div>
 """, unsafe_allow_html=True)
