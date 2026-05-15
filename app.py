@@ -263,12 +263,34 @@ with tab1:
         cost_summary = df_full.groupby("Category")[
             ["Fuel_Cost_Monthly", "Insurance_Monthly", "Maintenance_Monthly"]
         ].mean().round(0)
-        fig3 = px.bar(cost_summary.reset_index().melt(id_vars="Category"),
-                      x="Category", y="value", color="variable", barmode="stack",
-                      color_discrete_sequence=["#e94560", "#f5a623", "#a8dadc"],
-                      title="Average Monthly Cost Breakdown by Vehicle Type",
-                      labels={"value": "Monthly Cost (R)", "variable": "Cost Component"})
-        chart_layout(fig3)
+        cost_melted = cost_summary.reset_index().melt(id_vars="Category")
+        cost_melted["variable"] = cost_melted["variable"].map({
+            "Fuel_Cost_Monthly":    "Fuel",
+            "Insurance_Monthly":    "Insurance",
+            "Maintenance_Monthly":  "Maintenance",
+        })
+        fig3 = px.bar(
+            cost_melted,
+            y="Category", x="value", color="variable", barmode="stack",
+            orientation="h",
+            color_discrete_sequence=["#e94560", "#f5a623", "#a8dadc"],
+            title="Avg Monthly Cost Breakdown by Vehicle Type",
+            labels={"value": "Monthly Cost (R)", "variable": "", "Category": ""},
+        )
+        fig3.update_layout(yaxis={"categoryorder": "total ascending"})
+        chart_layout(fig3, height=340)
+        # Override: give x-axis title its own row, legend sits below that
+        fig3.update_layout(
+            margin=dict(l=10, r=10, t=56, b=90),
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.38,
+                xanchor="center",
+                x=0.5,
+                font=dict(size=11),
+            ),
+        )
         st.plotly_chart(fig3, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col_r2:
