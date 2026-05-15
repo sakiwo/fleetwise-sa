@@ -34,6 +34,8 @@ st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
     html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
+
+    /* Header — always dark with gradient, text always white inside it */
     .main-header {
         background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f3460 100%);
         border-radius: 16px; padding: 2.5rem 3rem; margin-bottom: 2rem;
@@ -46,23 +48,44 @@ st.markdown("""
         margin: 0 0 0.5rem 0;
     }
     .main-header p { color: rgba(255,255,255,0.65); font-size: 1.05rem; margin: 0; }
+
+    /* Section titles — use Streamlit body text colour so they always show */
     .section-title {
-        font-size: 1.4rem; font-weight: 600; color: #f0f0f0;
-        border-left: 3px solid #e94560; padding-left: 0.8rem; margin: 2rem 0 1rem 0;
+        font-size: 1.4rem; font-weight: 600;
+        color: var(--text-color, inherit);
+        border-left: 3px solid #e94560;
+        padding-left: 0.8rem; margin: 2rem 0 1rem 0;
     }
+
+    /* Insight boxes — adaptive background + text, teal border stays */
     .insight-box {
-        background: rgba(78,205,196,0.08); border: 1px solid rgba(78,205,196,0.25);
+        background: rgba(78,205,196,0.10);
+        border: 1px solid rgba(78,205,196,0.40);
         border-radius: 10px; padding: 1rem 1.3rem; font-size: 0.92rem;
-        color: rgba(255,255,255,0.8); margin: 0.8rem 0;
+        color: var(--text-color, inherit);
+        margin: 0.8rem 0;
     }
-    .risk-low  { color: #4ecdc4; font-weight: 600; }
-    .risk-med  { color: #f5a623; font-weight: 600; }
-    .risk-high { color: #e94560; font-weight: 600; }
+
+    /* Risk colours — same in both modes */
+    .risk-low  { color: #1aad9c; font-weight: 600; }
+    .risk-med  { color: #d4890a; font-weight: 600; }
+    .risk-high { color: #c0303e; font-weight: 600; }
+
+    /* Tabs */
     .stTabs [data-baseweb="tab-list"] { gap: 8px; }
     .stTabs [data-baseweb="tab"] { border-radius: 8px; padding: 0.5rem 1.2rem; font-weight: 500; }
+
+    /* Metric cards — use Streamlit surface colour, no hardcoded dark */
     div[data-testid="metric-container"] {
-        background: #0f0f1a; border: 1px solid rgba(255,255,255,0.08);
+        background: var(--background-color, transparent);
+        border: 1px solid rgba(128,128,128,0.2);
         border-radius: 12px; padding: 1rem;
+    }
+
+    /* Footer — adapt text colour */
+    .fw-footer {
+        text-align: center; font-size: 0.8rem; padding: 1rem;
+        color: rgba(128,128,128,0.7);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -84,6 +107,26 @@ def load_comparison(city):
 @st.cache_data
 def load_delta(city):
     return profit_delta(city)
+
+# ─── CHART THEME ─────────────────────────────────────────────────────────────
+def chart_layout(fig, height=None, **kwargs):
+    """Apply a clean neutral theme that looks good in both light and dark mode."""
+    updates = dict(
+        template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)",   # transparent — inherits page bg
+        plot_bgcolor="rgba(0,0,0,0)",
+        font_family="Space Grotesk",
+        font_color=None,                  # let plotly pick per theme
+        margin=dict(l=10, r=10, t=40, b=10),
+    )
+    if height:
+        updates["height"] = height
+    updates.update(kwargs)
+    fig.update_layout(**updates)
+    # Subtle grid lines visible in both modes
+    fig.update_xaxes(gridcolor="rgba(128,128,128,0.15)", zerolinecolor="rgba(128,128,128,0.25)")
+    fig.update_yaxes(gridcolor="rgba(128,128,128,0.15)", zerolinecolor="rgba(128,128,128,0.25)")
+    return fig
 
 # ─── SIDEBAR ─────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -179,8 +222,7 @@ with tab1:
         fig = px.box(df_full, x="Category", y="Net_Profit_Cash", color="Uber_Tier",
                      color_discrete_sequence=["#4ecdc4", "#e94560", "#f5a623"],
                      title="Monthly Net Profit Distribution by Vehicle Category & Tier")
-        fig.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                          plot_bgcolor="#0f0f1a", font_family="Space Grotesk")
+        chart_layout(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     with col_r:
@@ -189,8 +231,7 @@ with tab1:
                           color_discrete_sequence=["#4ecdc4", "#e94560", "#f5a623"],
                           title="Price vs Monthly Profit (bubble = ROI %)",
                           labels={"Price_R": "Vehicle Price (R)", "Net_Profit_Cash": "Monthly Net Profit (R)"})
-        fig2.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                           plot_bgcolor="#0f0f1a", font_family="Space Grotesk")
+        chart_layout(fig2)
         st.plotly_chart(fig2, use_container_width=True)
 
     col_l2, col_r2 = st.columns(2)
@@ -204,21 +245,19 @@ with tab1:
                       color_discrete_sequence=["#e94560", "#f5a623", "#a8dadc"],
                       title="Average Monthly Cost Breakdown by Vehicle Type",
                       labels={"value": "Monthly Cost (R)", "variable": "Cost Component"})
-        fig3.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                           plot_bgcolor="#0f0f1a", font_family="Space Grotesk")
+        chart_layout(fig3)
         st.plotly_chart(fig3, use_container_width=True)
 
     with col_r2:
         city_data = []
         for city_name in list(city_config.keys())[:6]:
-            cdf = build_dataset(city_name)
+            cdf = build_dataset(city_name, selected_year)
             city_data.append({"City": city_name, "Avg_ROI": cdf["Annual_ROI_Pct"].mean()})
         city_compare = pd.DataFrame(city_data).sort_values("Avg_ROI", ascending=True)
         fig4 = px.bar(city_compare, x="Avg_ROI", y="City", orientation="h",
                       color="Avg_ROI", color_continuous_scale=["#e94560", "#f5a623", "#4ecdc4"],
                       title="Average Annual ROI by City", labels={"Avg_ROI": "Annual ROI (%)"})
-        fig4.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                           plot_bgcolor="#0f0f1a", showlegend=False, font_family="Space Grotesk")
+        chart_layout(fig4, showlegend=False)
         st.plotly_chart(fig4, use_container_width=True)
 
     st.markdown('<p class="section-title">Key Insights from the Data</p>', unsafe_allow_html=True)
@@ -263,9 +302,7 @@ with tab2:
                           title=f"Top 10 Vehicles Ranked by {sort_by.replace('_', ' ')}",
                           hover_data=["Price_R", "Net_Profit_Cash", "Annual_ROI_Pct", "Risk_Score"])
         fig_rank.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
-        fig_rank.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                               plot_bgcolor="#0f0f1a", yaxis={"categoryorder": "total ascending"},
-                               font_family="Space Grotesk", height=450)
+        chart_layout(fig_rank, height=450, yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig_rank, use_container_width=True)
 
         display_cols = {
@@ -312,9 +349,9 @@ with tab2:
 
         fig_radar.update_layout(
             polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
-            template="plotly_dark", paper_bgcolor="#0f0f1a",
-            font_family="Space Grotesk", title="Normalized Performance: Top 3 Vehicles", height=400
+            title="Normalized Performance: Top 3 Vehicles"
         )
+        chart_layout(fig_radar, height=400)
         st.plotly_chart(fig_radar, use_container_width=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -331,10 +368,7 @@ with tab3:
                         color="Importance",
                         color_continuous_scale=["#1a1a2e", "#e94560", "#f5a623"],
                         title="What Drives Monthly Profit?")
-        fig_fi.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                             plot_bgcolor="#0f0f1a", showlegend=False,
-                             yaxis={"categoryorder": "total ascending"},
-                             font_family="Space Grotesk", height=360)
+        chart_layout(fig_fi, height=360, showlegend=False, yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig_fi, use_container_width=True)
         st.markdown(f"""
         <div class="insight-box">
@@ -424,13 +458,9 @@ with tab4:
         x=sim_df["month"], y=sim_df["total_monthly_income"],
         name="Monthly Income (R)", marker_color="#e94560", opacity=0.6
     ), secondary_y=True)
-    fig_sim.update_layout(
-        title=f"Fleet Growth to {sim_target} Cars · {total_months} months total",
-        template="plotly_dark", paper_bgcolor="#0f0f1a", plot_bgcolor="#0f0f1a",
-        font_family="Space Grotesk", height=400
-    )
-    fig_sim.update_yaxes(title_text="Cars Owned",         secondary_y=False, color="#4ecdc4")
-    fig_sim.update_yaxes(title_text="Monthly Income (R)", secondary_y=True,  color="#e94560")
+    chart_layout(fig_sim, height=400, title=f"Fleet Growth to {sim_target} Cars · {total_months} months total")
+    fig_sim.update_yaxes(title_text="Cars Owned",         secondary_y=False)
+    fig_sim.update_yaxes(title_text="Monthly Income (R)", secondary_y=True)
     st.plotly_chart(fig_sim, use_container_width=True)
 
     years      = total_months // 12
@@ -466,8 +496,7 @@ with tab5:
                               title="Risk Map: Fuel Cost vs Maintenance Cost",
                               labels={"Fuel_Cost_Monthly": "Monthly Fuel Cost (R)",
                                       "Maintenance_Monthly": "Monthly Maintenance (R)"})
-        fig_risk.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                               plot_bgcolor="#0f0f1a", font_family="Space Grotesk")
+        chart_layout(fig_risk)
         st.plotly_chart(fig_risk, use_container_width=True)
 
     with col2:
@@ -477,10 +506,7 @@ with tab5:
                             color_discrete_sequence=["#4ecdc4", "#e94560", "#f5a623", "#a8dadc", "#e0aaff"],
                             title="Top 12 Vehicles by 3-Year Resale Value",
                             labels={"Resale_Value_R": "Estimated Resale Value (R)"})
-        fig_resale.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                                 plot_bgcolor="#0f0f1a",
-                                 yaxis={"categoryorder": "total ascending"},
-                                 font_family="Space Grotesk")
+        chart_layout(fig_resale, yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig_resale, use_container_width=True)
 
     st.markdown('<p class="section-title">Risk Assessment: All Vehicles</p>', unsafe_allow_html=True)
@@ -552,13 +578,8 @@ with tab6:
         labels={"Profit_Delta": "Profit Change (R/month)", "Model": ""}
     )
     fig_delta.update_traces(textposition="outside")
-    fig_delta.update_layout(
-        template="plotly_dark", paper_bgcolor="#0f0f1a", plot_bgcolor="#0f0f1a",
-        font_family="Space Grotesk", height=900,
-        yaxis={"categoryorder": "total ascending"},
-        showlegend=False
-    )
-    fig_delta.add_vline(x=0, line_dash="dash", line_color="rgba(255,255,255,0.3)")
+    chart_layout(fig_delta, height=900, yaxis={"categoryorder": "total ascending"}, showlegend=False)
+    fig_delta.add_vline(x=0, line_dash="dash", line_color="rgba(128,128,128,0.5)")
     st.plotly_chart(fig_delta, use_container_width=True)
 
     # ── Side-by-side profit scatter ──────────────────────────────────────────
@@ -572,8 +593,7 @@ with tab6:
             title="Monthly Profit by Tier: 2024 vs 2026",
             labels={"Net_Profit_Cash": "Monthly Net Profit (R)", "Year": "Year"}
         )
-        fig_box.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                              plot_bgcolor="#0f0f1a", font_family="Space Grotesk")
+        chart_layout(fig_box)
         st.plotly_chart(fig_box, use_container_width=True)
 
     with col_r:
@@ -586,8 +606,7 @@ with tab6:
             labels={"Fuel_L100km": "Fuel Consumption (L/100km)",
                     "Net_Profit_Cash": "Monthly Net Profit (R)"}
         )
-        fig_fuel.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                               plot_bgcolor="#0f0f1a", font_family="Space Grotesk")
+        chart_layout(fig_fuel)
         st.plotly_chart(fig_fuel, use_container_width=True)
 
     # ── Vehicles that crossed to loss ────────────────────────────────────────
@@ -619,9 +638,7 @@ with tab6:
         title="Top 10 Most Resilient Vehicles: 2024 vs 2026 Monthly Profit",
         labels={"value": "Monthly Profit (R)", "variable": "Year"}
     )
-    fig_resil.update_layout(template="plotly_dark", paper_bgcolor="#0f0f1a",
-                            plot_bgcolor="#0f0f1a", font_family="Space Grotesk",
-                            xaxis_tickangle=-30)
+    chart_layout(fig_resil, xaxis_tickangle=-30)
     st.plotly_chart(fig_resil, use_container_width=True)
 
     # ── Key finding callout ──────────────────────────────────────────────────
@@ -676,9 +693,9 @@ with tab7:
 # ─── FOOTER ──────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.markdown("""
-<div style="text-align:center; color:rgba(255,255,255,0.3); font-size:0.8rem; padding:1rem;">
-    FleetWise SA · Built with Python, Streamlit, Scikit-learn & Plotly ·
-    ALX Africa Data Science Portfolio·
-    Data sourced from AutoTrader SA, Uber estimates, DMPR fuel prices & SAIA benchmarks
+<div class="fw-footer">
+    FleetWise SA · Built with Python, Streamlit, Scikit-learn &amp; Plotly ·
+    ALX Africa Data Science Portfolio ·
+    Data sourced from AutoTrader SA, Uber estimates, DMPR fuel prices &amp; SAIA benchmarks
 </div>
 """, unsafe_allow_html=True)
