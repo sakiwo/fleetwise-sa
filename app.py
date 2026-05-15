@@ -1,7 +1,7 @@
 """
 FleetWise SA: Should I Build an Uber Fleet?
 A Data Science Portfolio Project
-Author: Ngobe | ALX Africa Data Science Certification
+Author: Ngobe | ALX Africa Data Science Certification 2024
 """
 
 import streamlit as st
@@ -109,21 +109,41 @@ def load_delta(city):
     return profit_delta(city)
 
 # ─── CHART THEME ─────────────────────────────────────────────────────────────
+PLOTLY_CONFIG = {"displayModeBar": False}
+
 def chart_layout(fig, height=None, **kwargs):
-    """Apply a clean neutral theme that looks good in both light and dark mode."""
+    """Apply a clean neutral theme optimised for both desktop and mobile.
+
+    Key mobile fixes:
+    - title_x/title_xanchor: left-align title so it sits below (not behind) the modebar
+    - margin t=56: gives the modebar its own 44px zone before the title starts
+    - legend orientation=h + y=-0.28: moves legend below chart, freeing horizontal space
+    - font size=11: tighter axis labels on narrow viewports
+    """
     updates = dict(
         template="plotly_white",
-        paper_bgcolor="rgba(0,0,0,0)",   # transparent — inherits page bg
+        paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         font_family="Space Grotesk",
-        font_color=None,                  # let plotly pick per theme
-        margin=dict(l=10, r=10, t=40, b=10),
+        font_color=None,
+        title_x=0.0,
+        title_xanchor="left",
+        title_pad=dict(l=4, t=4),
+        margin=dict(l=10, r=10, t=56, b=10),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=-0.28,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=11),
+        ),
+        font=dict(size=11),
     )
     if height:
         updates["height"] = height
     updates.update(kwargs)
     fig.update_layout(**updates)
-    # Subtle grid lines visible in both modes
     fig.update_xaxes(gridcolor="rgba(128,128,128,0.15)", zerolinecolor="rgba(128,128,128,0.25)")
     fig.update_yaxes(gridcolor="rgba(128,128,128,0.15)", zerolinecolor="rgba(128,128,128,0.25)")
     return fig
@@ -219,11 +239,14 @@ with tab1:
     col_l, col_r = st.columns(2)
 
     with col_l:
-        fig = px.box(df_full, x="Category", y="Net_Profit_Cash", color="Uber_Tier",
+        fig = px.box(df_full, x="Uber_Tier", y="Net_Profit_Cash", color="Uber_Tier",
                      color_discrete_sequence=["#4ecdc4", "#e94560", "#f5a623"],
-                     title="Monthly Net Profit Distribution by Vehicle Category & Tier")
+                     points="outliers",
+                     title="Monthly Net Profit by Uber Tier",
+                     labels={"Net_Profit_Cash": "Monthly Net Profit (R)", "Uber_Tier": "Tier"})
+        fig.update_layout(showlegend=False)
         chart_layout(fig)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col_r:
         fig2 = px.scatter(df_full, x="Price_R", y="Net_Profit_Cash",
@@ -232,7 +255,7 @@ with tab1:
                           title="Price vs Monthly Profit (bubble = ROI %)",
                           labels={"Price_R": "Vehicle Price (R)", "Net_Profit_Cash": "Monthly Net Profit (R)"})
         chart_layout(fig2)
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, config=PLOTLY_CONFIG)
 
     col_l2, col_r2 = st.columns(2)
 
@@ -246,7 +269,7 @@ with tab1:
                       title="Average Monthly Cost Breakdown by Vehicle Type",
                       labels={"value": "Monthly Cost (R)", "variable": "Cost Component"})
         chart_layout(fig3)
-        st.plotly_chart(fig3, use_container_width=True)
+        st.plotly_chart(fig3, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col_r2:
         city_data = []
@@ -258,7 +281,7 @@ with tab1:
                       color="Avg_ROI", color_continuous_scale=["#e94560", "#f5a623", "#4ecdc4"],
                       title="Average Annual ROI by City", labels={"Avg_ROI": "Annual ROI (%)"})
         chart_layout(fig4, showlegend=False)
-        st.plotly_chart(fig4, use_container_width=True)
+        st.plotly_chart(fig4, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<p class="section-title">Key Insights from the Data</p>', unsafe_allow_html=True)
     best_tier      = df_full.groupby("Uber_Tier")["Net_Profit_Cash"].mean().idxmax()
@@ -303,7 +326,7 @@ with tab2:
                           hover_data=["Price_R", "Net_Profit_Cash", "Annual_ROI_Pct", "Risk_Score"])
         fig_rank.update_traces(texttemplate='%{text:,.0f}', textposition='outside')
         chart_layout(fig_rank, height=450, yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig_rank, use_container_width=True)
+        st.plotly_chart(fig_rank, use_container_width=True, config=PLOTLY_CONFIG)
 
         display_cols = {
             "Model": "Vehicle", "Category": "Type", "Uber_Tier": "Tier",
@@ -352,7 +375,7 @@ with tab2:
             title="Normalized Performance: Top 3 Vehicles"
         )
         chart_layout(fig_radar, height=400)
-        st.plotly_chart(fig_radar, use_container_width=True)
+        st.plotly_chart(fig_radar, use_container_width=True, config=PLOTLY_CONFIG)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3 · ML PREDICTOR
@@ -369,7 +392,7 @@ with tab3:
                         color_continuous_scale=["#1a1a2e", "#e94560", "#f5a623"],
                         title="What Drives Monthly Profit?")
         chart_layout(fig_fi, height=360, showlegend=False, yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig_fi, use_container_width=True)
+        st.plotly_chart(fig_fi, use_container_width=True, config=PLOTLY_CONFIG)
         st.markdown(f"""
         <div class="insight-box">
         🤖 <strong>Model Performance</strong><br>
@@ -461,7 +484,7 @@ with tab4:
     chart_layout(fig_sim, height=400, title=f"Fleet Growth to {sim_target} Cars · {total_months} months total")
     fig_sim.update_yaxes(title_text="Cars Owned",         secondary_y=False)
     fig_sim.update_yaxes(title_text="Monthly Income (R)", secondary_y=True)
-    st.plotly_chart(fig_sim, use_container_width=True)
+    st.plotly_chart(fig_sim, use_container_width=True, config=PLOTLY_CONFIG)
 
     years      = total_months // 12
     months_rem = total_months % 12
@@ -497,7 +520,7 @@ with tab5:
                               labels={"Fuel_Cost_Monthly": "Monthly Fuel Cost (R)",
                                       "Maintenance_Monthly": "Monthly Maintenance (R)"})
         chart_layout(fig_risk)
-        st.plotly_chart(fig_risk, use_container_width=True)
+        st.plotly_chart(fig_risk, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col2:
         fig_resale = px.bar(risk_df.nlargest(12, "Resale_Value_R"),
@@ -507,7 +530,7 @@ with tab5:
                             title="Top 12 Vehicles by 3-Year Resale Value",
                             labels={"Resale_Value_R": "Estimated Resale Value (R)"})
         chart_layout(fig_resale, yaxis={"categoryorder": "total ascending"})
-        st.plotly_chart(fig_resale, use_container_width=True)
+        st.plotly_chart(fig_resale, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<p class="section-title">Risk Assessment: All Vehicles</p>', unsafe_allow_html=True)
     risk_filter = st.selectbox("Show", ["All", "Low Risk", "Medium Risk", "High Risk"])
@@ -580,7 +603,7 @@ with tab6:
     fig_delta.update_traces(textposition="outside")
     chart_layout(fig_delta, height=900, yaxis={"categoryorder": "total ascending"}, showlegend=False)
     fig_delta.add_vline(x=0, line_dash="dash", line_color="rgba(128,128,128,0.5)")
-    st.plotly_chart(fig_delta, use_container_width=True)
+    st.plotly_chart(fig_delta, use_container_width=True, config=PLOTLY_CONFIG)
 
     # ── Side-by-side profit scatter ──────────────────────────────────────────
     st.markdown('<p class="section-title">Profit Distribution Shift</p>', unsafe_allow_html=True)
@@ -594,7 +617,7 @@ with tab6:
             labels={"Net_Profit_Cash": "Monthly Net Profit (R)", "Year": "Year"}
         )
         chart_layout(fig_box)
-        st.plotly_chart(fig_box, use_container_width=True)
+        st.plotly_chart(fig_box, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col_r:
         # Fuel efficiency scatter coloured by year
@@ -607,7 +630,7 @@ with tab6:
                     "Net_Profit_Cash": "Monthly Net Profit (R)"}
         )
         chart_layout(fig_fuel)
-        st.plotly_chart(fig_fuel, use_container_width=True)
+        st.plotly_chart(fig_fuel, use_container_width=True, config=PLOTLY_CONFIG)
 
     # ── Vehicles that crossed to loss ────────────────────────────────────────
     st.markdown('<p class="section-title">Vehicles That Became Unprofitable in 2026</p>', unsafe_allow_html=True)
@@ -639,7 +662,7 @@ with tab6:
         labels={"value": "Monthly Profit (R)", "variable": "Year"}
     )
     chart_layout(fig_resil, xaxis_tickangle=-30)
-    st.plotly_chart(fig_resil, use_container_width=True)
+    st.plotly_chart(fig_resil, use_container_width=True, config=PLOTLY_CONFIG)
 
     # ── Key finding callout ──────────────────────────────────────────────────
     most_resilient = df_delta.nlargest(1, "Profit_Delta").iloc[0]
