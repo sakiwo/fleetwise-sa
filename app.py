@@ -1,7 +1,7 @@
 """
 FleetWise SA: Should I Build an Uber Fleet?
 A Data Science Portfolio Project
-Author: Ngobe | ALX Africa Data Science Certification 2024
+Author: Ngobe | ALX Africa Data Science Certification
 """
 
 import streamlit as st
