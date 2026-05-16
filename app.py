@@ -1,7 +1,7 @@
 """
 FleetWise SA: Should I Build an Uber Fleet?
 A Data Science Portfolio Project
-Author: Ngobe | ALX Africa Data Science Certification 2024
+Author: Ngobe | ALX Africa Data Science Certification
 """
 
 import streamlit as st
@@ -224,8 +224,10 @@ if "role" not in st.session_state:
     st.session_state.role = None
 if "feedback_submitted" not in st.session_state:
     st.session_state.feedback_submitted = False
-if "guide_seen" not in st.session_state:
-    st.session_state.guide_seen = False
+if "tour_step" not in st.session_state:
+    st.session_state.tour_step = 0          # 0 = not started, -1 = finished/skipped
+if "tour_seen" not in st.session_state:
+    st.session_state.tour_seen = False      # True once user has been shown tour offer
 
 # ─── LANDING PAGE ─────────────────────────────────────────────────────────────
 if st.session_state.role is None:
@@ -240,7 +242,7 @@ if st.session_state.role is None:
     """, unsafe_allow_html=True)
 
     st.markdown('<p style="font-size:1.5rem; font-weight:700; margin-bottom:0.2rem;">Who are you?</p>', unsafe_allow_html=True)
-    st.markdown("<p style='color:rgba(128,128,128,0.9); margin-top:0;'>Pick the option that best describes you — we'll show you what's relevant.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:rgba(128,128,128,0.9); margin-top:0;'>Pick the option that best describes you</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     col_d, col_f, col_r = st.columns(3)
@@ -372,50 +374,204 @@ with st.sidebar:
                                 ["Hatchback", "Sedan", "SUV", "MPV", "Bakkie"],
                                 default=["Hatchback", "Sedan"])
     st.markdown("---")
+    if st.session_state.get("tour_step", -1) == -1 and st.session_state.get("tour_seen", False):
+        if st.button("🗺️ Restart tour", key="sidebar_restart_tour", use_container_width=True):
+            st.session_state.tour_step = 1
+            st.rerun()
     st.caption("FleetWise SA v1.1 | NGOBE")
 
 # ─── ONBOARDING GUIDE ────────────────────────────────────────────────────────
-_GUIDE_TIPS = {
+# ─── TOUR DEFINITIONS ────────────────────────────────────────────────────────
+# Each step: (tab_label, headline, body, emoji)
+_TOUR_STEPS = {
     "driver": [
-        ("🏆 Vehicle Rankings",     "Start here. Set your budget in the sidebar, then rank cars by Monthly Profit or ROI to find your best option."),
-        ("🤖 ML Profit Predictor",  "Have a specific car in mind? Enter its specs and the model estimates your monthly profit."),
-        ("⚠️ Risk Dashboard",       "Check the Risk Map before buying — it shows fuel and maintenance exposure per vehicle."),
-        ("💬 Feedback",             "Tell us what you were trying to figure out. Takes 60 seconds and shapes version 2."),
+        ("sidebar",             "⚙️ Set Your Budget First",
+         "Before anything else, use the sidebar to set your budget and city. "
+         "Everything in the app filters to vehicles you can actually afford in your market.",
+         "👈"),
+        ("🏆 Vehicle Rankings", "Your Starting Point",
+         "This is the most useful tab for you. Rank vehicles by Monthly Profit, ROI %, "
+         "or Breakeven Speed. The bar chart shows your top 10 at a glance — "
+         "the radar chart below it compares the top 3 across every dimension simultaneously.",
+         "🏆"),
+        ("🤖 ML Profit Predictor", "Already Have a Car in Mind?",
+         "Found something on AutoTrader that's not in our list? Enter its price, "
+         "fuel consumption, insurance and maintenance — the model gives you an estimated "
+         "monthly profit and tells you whether it's viable.",
+         "🤖"),
+        ("⚠️ Risk Dashboard",   "Check Before You Buy",
+         "The Risk Map plots every vehicle by fuel cost vs maintenance cost. "
+         "Anything top-right is expensive to run. The resale chart shows what "
+         "your car is likely worth after 3 years — important if you ever need to exit.",
+         "⚠️"),
+        ("💬 Feedback",         "60 Seconds That Matter",
+         "Once you've had a look around, tell us what you were trying to figure out. "
+         "Your answer directly shapes what gets built in version 2.",
+         "💬"),
     ],
     "fleet": [
-        ("📊 EDA & Market Overview","Get the lay of the land — profit distributions by tier and how your city compares."),
-        ("📈 Fleet Growth Simulator","Model how long it takes to grow from 1 car to your target fleet by reinvesting profits."),
-        ("⚠️ Risk Dashboard",       "Resale value matters at fleet scale. Identify vehicles that hold value after 3 years."),
-        ("📅 2024 vs 2026",         "See which vehicles were hit hardest by the fuel price increase — critical for portfolio decisions."),
-        ("💬 Feedback",             "Tell us what metrics or scenarios are missing."),
+        ("sidebar",             "⚙️ Configure Your Market",
+         "Set your city and choose between 2024 baseline and 2026 current conditions. "
+         "The year toggle changes every number in the app — use it to stress-test your fleet decisions.",
+         "👈"),
+        ("📊 EDA & Market Overview", "The Market Picture",
+         "Start here to understand how profit distributes across tiers and categories in your city. "
+         "The city ROI chart shows whether you're operating in a high or low-demand market — "
+         "this gap matters more than vehicle choice at the margin.",
+         "📊"),
+        ("📈 Fleet Growth Simulator", "Your Scaling Model",
+         "Set your monthly profit per car and reinvestment rate. The simulator shows "
+         "how long it takes to grow from 1 car to your target fleet by reinvesting profits. "
+         "Adjust the sliders to find the scenario that matches your cash flow reality.",
+         "📈"),
+        ("📅 2024 vs 2026 Comparison", "The Fuel Crisis Impact",
+         "This is the most decision-relevant tab for fleet operators. "
+         "The waterfall chart shows exactly which vehicles lost margin in 2026 and by how much. "
+         "The resilience ranking at the bottom tells you what to buy more of.",
+         "📅"),
+        ("⚠️ Risk Dashboard",   "Portfolio Risk View",
+         "At fleet scale, resale value and maintenance variance matter more than for single-car owners. "
+         "Filter to Low Risk to find vehicles that won't drain your margins unexpectedly.",
+         "⚠️"),
+        ("💬 Feedback",         "What's Missing?",
+         "Tell us what scenarios or metrics you needed that weren't here. "
+         "Fleet operator feedback is the most valuable input for version 2.",
+         "💬"),
     ],
     "researcher": [
-        ("📊 EDA & Market Overview","The full market picture — profit distributions, cost breakdowns, and city-level ROI comparisons."),
-        ("📅 2024 vs 2026",         "The most data-rich section. Shows per-vehicle profit delta across market conditions."),
-        ("📋 Full Dataset",         "Download the complete dataset as CSV — both 2024 and 2026 versions available."),
-        ("💬 Feedback",             "Let us know what you were researching. Academic and journalist feedback is especially useful."),
+        ("sidebar",             "⚙️ Year & City Controls",
+         "Use the Market Year toggle to switch between 2024 and 2026 data. "
+         "All charts, tables and ML outputs update instantly — useful for comparing conditions.",
+         "👈"),
+        ("📊 EDA & Market Overview", "Market-Wide Analysis",
+         "Profit distributions, cost breakdowns by vehicle type, and city-level ROI comparisons. "
+         "These charts are built from a dataset of 46 vehicles across 8 cities and 2 market years.",
+         "📊"),
+        ("📅 2024 vs 2026 Comparison", "The Core Analysis",
+         "The most data-rich section. The waterfall shows per-vehicle profit delta across "
+         "market conditions. The fuel efficiency scatter makes the resilience pattern visible — "
+         "lower consumption vehicles absorbed the fuel shock far better.",
+         "📅"),
+        ("📋 Full Dataset",     "Export the Data",
+         "Download the complete dataset as CSV. You can get the current year, "
+         "or both 2024 and 2026 combined in a single file with a Year column for easy filtering.",
+         "📋"),
+        ("💬 Feedback",         "Research Context Helps",
+         "Let us know what you were researching. Academic, journalistic and policy feedback "
+         "is especially useful — it helps us understand use cases we haven't designed for yet.",
+         "💬"),
     ],
 }
 
-if not st.session_state.guide_seen and st.session_state.role is not None:
-    tips = _GUIDE_TIPS.get(st.session_state.role, [])
-    steps_html = "".join(
-        '<div class="guide-step"><div class="step-num">{}</div><div><strong>{}</strong> &mdash; {}</div></div>'.format(
-            i+1, tab, tip
-        )
-        for i, (tab, tip) in enumerate(tips)
-    )
-    guide_html = (
-        '<div class="guide-overlay">'
-        '<h4>👋 Quick Guide &mdash; here is where to start</h4>'
-        + steps_html +
-        '</div>'
-    )
-    st.markdown(guide_html, unsafe_allow_html=True)
-    if st.button("Got it, let me explore →", key="dismiss_guide", type="primary"):
-        st.session_state.guide_seen = True
-        st.rerun()
-    st.markdown("---")
+def _render_tour():
+    """
+    Render the step-by-step tour overlay.
+    tour_step=0  → offer to start
+    tour_step>0  → show that step
+    tour_step=-1 → finished/skipped (nothing shown)
+    """
+    role = st.session_state.role
+    step = st.session_state.tour_step
+
+    # Tour finished or skipped — just show the "Restart tour" hint in sidebar
+    if step == -1:
+        return
+
+    steps = _TOUR_STEPS.get(role, [])
+    total = len(steps)
+
+    # ── Step 0: offer ─────────────────────────────────────────────────────────
+    if step == 0:
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg,#0f0f1a,#1a1a2e);
+            border: 1px solid rgba(78,205,196,0.4);
+            border-radius: 14px; padding: 1.4rem 1.6rem; margin-bottom: 1rem;
+        ">
+            <div style="font-size:1.5rem; margin-bottom:0.4rem;">👋</div>
+            <div style="font-size:1.05rem; font-weight:700; color:#4ecdc4; margin-bottom:0.3rem;">
+                Want a quick tour?
+            </div>
+            <div style="font-size:0.9rem; color:rgba(255,255,255,0.65); line-height:1.55;">
+                We'll walk you through each section step by step — takes about 60 seconds.
+                You can skip at any time, and restart it later from the sidebar if you need.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        c1, c2 = st.columns([2, 1])
+        with c1:
+            if st.button("Show me around →", key="tour_start", type="primary",
+                         use_container_width=True):
+                st.session_state.tour_step = 1
+                st.rerun()
+        with c2:
+            if st.button("Skip tour", key="tour_skip_offer", use_container_width=True):
+                st.session_state.tour_step = -1
+                st.rerun()
+        st.markdown("---")
+        return
+
+    # ── Steps 1..N ────────────────────────────────────────────────────────────
+    if 1 <= step <= total:
+        tab_label, headline, body, emoji = steps[step - 1]
+        progress_pct = int((step / total) * 100)
+
+        st.markdown(f"""
+        <div style="
+            background: linear-gradient(135deg,#0f0f1a,#1a1a2e);
+            border: 1px solid rgba(78,205,196,0.35);
+            border-radius: 14px; padding: 1.3rem 1.6rem; margin-bottom: 1rem;
+        ">
+            <div style="display:flex; justify-content:space-between;
+                        align-items:center; margin-bottom:0.7rem;">
+                <span style="font-size:0.78rem; color:rgba(255,255,255,0.35);
+                             letter-spacing:0.06em; text-transform:uppercase;">
+                    Step {step} of {total}
+                </span>
+                <span style="font-size:0.78rem; color:rgba(78,205,196,0.7);">
+                    {tab_label if tab_label != "sidebar" else "Sidebar"}
+                </span>
+            </div>
+            <div style="background:rgba(255,255,255,0.08); border-radius:4px;
+                        height:3px; margin-bottom:0.9rem;">
+                <div style="background:#4ecdc4; height:3px; border-radius:4px;
+                            width:{progress_pct}%;"></div>
+            </div>
+            <div style="font-size:1.0rem; font-weight:700; color:#fff;
+                        margin-bottom:0.45rem;">{emoji}&nbsp; {headline}</div>
+            <div style="font-size:0.88rem; color:rgba(255,255,255,0.7);
+                        line-height:1.6;">{body}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        btn_cols = st.columns([1, 1, 1])
+        with btn_cols[0]:
+            if step > 1:
+                if st.button("← Back", key="tour_back", use_container_width=True):
+                    st.session_state.tour_step -= 1
+                    st.rerun()
+        with btn_cols[1]:
+            if st.button("Skip tour", key="tour_skip_mid", use_container_width=True):
+                st.session_state.tour_step = -1
+                st.rerun()
+        with btn_cols[2]:
+            label = "Finish ✓" if step == total else "Next →"
+            if st.button(label, key="tour_next", type="primary", use_container_width=True):
+                if step == total:
+                    st.session_state.tour_step = -1
+                else:
+                    st.session_state.tour_step += 1
+                st.rerun()
+
+        st.markdown("---")
+
+
+# ── Trigger tour for first-time visitors (after role selection) ───────────────
+if st.session_state.role is not None and not st.session_state.tour_seen:
+    st.session_state.tour_seen = True
+    st.session_state.tour_step = 0   # offer the tour
+
+_render_tour()
 
 # ─── LOAD ────────────────────────────────────────────────────────────────────
 models, df_full = load_models(selected_city, selected_year)
