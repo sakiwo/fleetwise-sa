@@ -752,7 +752,19 @@ if tab5 is not None:
                               title="Risk Map: Fuel Cost vs Maintenance Cost",
                               labels={"Fuel_Cost_Monthly": "Monthly Fuel Cost (R)",
                                       "Maintenance_Monthly": "Monthly Maintenance (R)"})
-        chart_layout(fig_risk)
+        chart_layout(fig_risk, height=400)
+        fig_risk.update_layout(
+            margin=dict(l=10, r=10, t=56, b=80),
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.22,
+                xanchor="center",
+                x=0.5,
+                title_text="",
+                font=dict(size=11),
+            ),
+        )
         st.plotly_chart(fig_risk, use_container_width=True, config=PLOTLY_CONFIG)
 
     with col2:
@@ -761,8 +773,20 @@ if tab5 is not None:
                             color="Category",
                             color_discrete_sequence=["#4ecdc4", "#e94560", "#f5a623", "#a8dadc", "#e0aaff"],
                             title="Top 12 Vehicles by 3-Year Resale Value",
-                            labels={"Resale_Value_R": "Estimated Resale Value (R)"})
-        chart_layout(fig_resale, yaxis={"categoryorder": "total ascending"})
+                            labels={"Resale_Value_R": "Estimated Resale Value (R)", "Category": ""})
+        chart_layout(fig_resale, height=400, yaxis={"categoryorder": "total ascending"})
+        fig_resale.update_layout(
+            margin=dict(l=10, r=10, t=56, b=80),
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.22,
+                xanchor="center",
+                x=0.5,
+                title_text="",
+                font=dict(size=11),
+            ),
+        )
         st.plotly_chart(fig_resale, use_container_width=True, config=PLOTLY_CONFIG)
 
     st.markdown('<p class="section-title">Risk Assessment: All Vehicles</p>', unsafe_allow_html=True)
