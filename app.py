@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import sys, os
 from datetime import datetime
+import time
 import gspread
 from google.oauth2.service_account import Credentials
 
@@ -89,6 +90,29 @@ st.markdown("""
     .fw-footer {
         text-align: center; font-size: 0.8rem; padding: 1rem;
         color: rgba(128,128,128,0.7);
+    }
+
+    /* ── Guide overlay ── */
+    .guide-overlay {
+        background: rgba(15,15,26,0.97);
+        border: 1px solid rgba(78,205,196,0.35);
+        border-radius: 14px; padding: 1.6rem 1.8rem;
+        margin-bottom: 1.2rem;
+    }
+    .guide-overlay h4 {
+        font-size: 1.05rem; font-weight: 700;
+        color: #4ecdc4; margin: 0 0 0.8rem 0;
+    }
+    .guide-step {
+        display: flex; gap: 0.8rem; align-items: flex-start;
+        margin-bottom: 0.7rem; font-size: 0.9rem;
+        color: rgba(255,255,255,0.75);
+    }
+    .guide-step .step-num {
+        background: #e94560; color: #fff;
+        border-radius: 50%; width: 22px; height: 22px; min-width: 22px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.75rem; font-weight: 700; margin-top: 1px;
     }
 
     /* ── Landing page ── */
@@ -200,6 +224,8 @@ if "role" not in st.session_state:
     st.session_state.role = None
 if "feedback_submitted" not in st.session_state:
     st.session_state.feedback_submitted = False
+if "guide_seen" not in st.session_state:
+    st.session_state.guide_seen = False
 
 # ─── LANDING PAGE ─────────────────────────────────────────────────────────────
 if st.session_state.role is None:
@@ -213,8 +239,8 @@ if st.session_state.role is None:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### Who are you?")
-    st.markdown("Pick the option that best describes you — we'll show you what's relevant.")
+    st.markdown('<p style="font-size:1.5rem; font-weight:700; margin-bottom:0.2rem;">Who are you?</p>', unsafe_allow_html=True)
+    st.markdown("<p style='color:rgba(128,128,128,0.9); margin-top:0;'>Pick the option that best describes you — we'll show you what's relevant.</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     col_d, col_f, col_r = st.columns(3)
@@ -347,6 +373,49 @@ with st.sidebar:
                                 default=["Hatchback", "Sedan"])
     st.markdown("---")
     st.caption("FleetWise SA v1.1 | NGOBE")
+
+# ─── ONBOARDING GUIDE ────────────────────────────────────────────────────────
+_GUIDE_TIPS = {
+    "driver": [
+        ("🏆 Vehicle Rankings",     "Start here. Set your budget in the sidebar, then rank cars by Monthly Profit or ROI to find your best option."),
+        ("🤖 ML Profit Predictor",  "Have a specific car in mind? Enter its specs and the model estimates your monthly profit."),
+        ("⚠️ Risk Dashboard",       "Check the Risk Map before buying — it shows fuel and maintenance exposure per vehicle."),
+        ("💬 Feedback",             "Tell us what you were trying to figure out. Takes 60 seconds and shapes version 2."),
+    ],
+    "fleet": [
+        ("📊 EDA & Market Overview","Get the lay of the land — profit distributions by tier and how your city compares."),
+        ("📈 Fleet Growth Simulator","Model how long it takes to grow from 1 car to your target fleet by reinvesting profits."),
+        ("⚠️ Risk Dashboard",       "Resale value matters at fleet scale. Identify vehicles that hold value after 3 years."),
+        ("📅 2024 vs 2026",         "See which vehicles were hit hardest by the fuel price increase — critical for portfolio decisions."),
+        ("💬 Feedback",             "Tell us what metrics or scenarios are missing."),
+    ],
+    "researcher": [
+        ("📊 EDA & Market Overview","The full market picture — profit distributions, cost breakdowns, and city-level ROI comparisons."),
+        ("📅 2024 vs 2026",         "The most data-rich section. Shows per-vehicle profit delta across market conditions."),
+        ("📋 Full Dataset",         "Download the complete dataset as CSV — both 2024 and 2026 versions available."),
+        ("💬 Feedback",             "Let us know what you were researching. Academic and journalist feedback is especially useful."),
+    ],
+}
+
+if not st.session_state.guide_seen and st.session_state.role is not None:
+    tips = _GUIDE_TIPS.get(st.session_state.role, [])
+    steps_html = "".join(
+        '<div class="guide-step"><div class="step-num">{}</div><div><strong>{}</strong> &mdash; {}</div></div>'.format(
+            i+1, tab, tip
+        )
+        for i, (tab, tip) in enumerate(tips)
+    )
+    guide_html = (
+        '<div class="guide-overlay">'
+        '<h4>👋 Quick Guide &mdash; here is where to start</h4>'
+        + steps_html +
+        '</div>'
+    )
+    st.markdown(guide_html, unsafe_allow_html=True)
+    if st.button("Got it, let me explore →", key="dismiss_guide", type="primary"):
+        st.session_state.guide_seen = True
+        st.rerun()
+    st.markdown("---")
 
 # ─── LOAD ────────────────────────────────────────────────────────────────────
 models, df_full = load_models(selected_city, selected_year)
@@ -1021,18 +1090,23 @@ if tab_feedback is not None:
             st.session_state.feedback_error = save_err
 
     if st.session_state.feedback_submitted:
+        _msg_slot = st.empty()
         if st.session_state.get("feedback_saved", False):
-            st.success("Saved. Thanks — that genuinely helps. The goal is to make version 2 actually useful for real people, not just impressive on a CV.")
+            _msg_slot.success("Saved. Thanks — that genuinely helps. The goal is to make version 2 actually useful for real people, not just impressive on a CV.")
         else:
             err_detail = st.session_state.get("feedback_error", "Unknown error")
-            st.warning(f"Couldn't save to the sheet. Error: `{err_detail}`")
-        st.markdown("""
-        <div class="insight-box">
-        📌 <strong>What happens with your feedback?</strong><br>
-        Responses are reviewed to identify the most common unmet needs per user type.
-        Those become the feature brief for FleetWise SA v2.
-        </div>
-        """, unsafe_allow_html=True)
+            _msg_slot.warning(f"Couldn't save to the sheet. Error: `{err_detail}`")
+        st.markdown(
+            '<div class="insight-box">'
+            "📌 <strong>What happens with your feedback?</strong><br>"
+            "Responses are reviewed to identify the most common unmet needs per user type. "
+            "Those become the feature brief for FleetWise SA v2."
+            "</div>",
+            unsafe_allow_html=True,
+        )
+        time.sleep(10)
+        _msg_slot.empty()
+        st.session_state.feedback_submitted = False
 
 # ─── FOOTER ──────────────────────────────────────────────────────────────────
 st.markdown("---")
