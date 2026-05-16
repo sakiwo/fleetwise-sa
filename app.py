@@ -158,7 +158,7 @@ _GS_SCOPES = [
 @st.cache_resource
 def _get_sheet():
     """Authenticate and return the FleetWise Feedback worksheet.
-    Returns None if credentials aren't configured (local dev).
+    Returns (worksheet, None) on success, (None, error_string) on failure.
     """
     try:
         creds = Credentials.from_service_account_info(
@@ -167,17 +167,21 @@ def _get_sheet():
         )
         client = gspread.authorize(creds)
         sheet  = client.open_by_key(st.secrets["sheets"]["spreadsheet_id"])
-        return sheet.sheet1
-    except Exception:
-        return None
+        return sheet.sheet1, None
+    except KeyError as e:
+        return None, f"Missing secret key: {e}"
+    except gspread.exceptions.SpreadsheetNotFound:
+        return None, "Spreadsheet not found — check the spreadsheet_id in secrets and that the sheet is shared with the service account email."
+    except Exception as e:
+        return None, f"{type(e).__name__}: {e}"
 
 def _save_feedback(role, useful, missing, suggest, rating):
     """Append one feedback row to the Google Sheet.
-    Silently skips if the sheet connection is unavailable.
+    Returns (True, None) on success, (False, error_string) on failure.
     """
-    ws = _get_sheet()
+    ws, err = _get_sheet()
     if ws is None:
-        return False
+        return False, err
     try:
         ws.append_row([
             datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
@@ -187,9 +191,9 @@ def _save_feedback(role, useful, missing, suggest, rating):
             suggest,
             rating,
         ], value_input_option="USER_ENTERED")
-        return True
-    except Exception:
-        return False
+        return True, None
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}" 
 
 # ─── SESSION STATE ───────────────────────────────────────────────────────────
 if "role" not in st.session_state:
@@ -987,15 +991,17 @@ if tab_feedback is not None:
 
         submitted = st.form_submit_button("Submit Feedback", type="primary", use_container_width=True)
         if submitted:
-            saved = _save_feedback(fb_role, fb_useful, fb_missing, fb_suggest, fb_rating)
+            saved, save_err = _save_feedback(fb_role, fb_useful, fb_missing, fb_suggest, fb_rating)
             st.session_state.feedback_submitted = True
             st.session_state.feedback_saved = saved
+            st.session_state.feedback_error = save_err
 
     if st.session_state.feedback_submitted:
         if st.session_state.get("feedback_saved", False):
             st.success("Saved. Thanks — that genuinely helps. The goal is to make version 2 actually useful for real people, not just impressive on a CV.")
         else:
-            st.warning("Submitted, but couldn't reach the sheet right now. The response may not have been saved — try again or contact Ngobe directly.")
+            err_detail = st.session_state.get("feedback_error", "Unknown error")
+            st.warning(f"Couldn't save to the sheet. Error: `{err_detail}`")
         st.markdown("""
         <div class="insight-box">
         📌 <strong>What happens with your feedback?</strong><br>
