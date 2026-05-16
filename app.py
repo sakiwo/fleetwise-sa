@@ -1064,10 +1064,11 @@ if tab_feedback is not None:
         st.markdown(f"**Your role:** {fb_role}")
         fb_useful = st.radio(
             "Was this app useful for what you came to do?",
-            ["✅ Yes, it answered my question",
+            ["— select one —",
+             "✅ Yes, it answered my question",
              "🔶 Partially — I found some of it helpful",
              "❌ Not really — I couldn't find what I needed"],
-            index=1
+            index=0
         )
         fb_missing = st.text_area(
             "What were you trying to figure out? (optional)",
@@ -1079,15 +1080,21 @@ if tab_feedback is not None:
             placeholder="e.g. Add a repayment calculator, show more cities, simplify the ML tab...",
             height=100,
         )
-        fb_rating = st.slider("Overall rating", 1, 5, 3,
-                              help="1 = needs a lot of work · 5 = exactly what I needed")
+        fb_rating = st.select_slider(
+            "Overall rating",
+            options=["1 — needs a lot of work", "2", "3 — decent", "4", "5 — exactly what I needed"],
+            help="Drag to select your rating"
+        )
 
         submitted = st.form_submit_button("Submit Feedback", type="primary", use_container_width=True)
         if submitted:
-            saved, save_err = _save_feedback(fb_role, fb_useful, fb_missing, fb_suggest, fb_rating)
-            st.session_state.feedback_submitted = True
-            st.session_state.feedback_saved = saved
-            st.session_state.feedback_error = save_err
+            if fb_useful == "— select one —":
+                st.warning("Please select whether the app was useful before submitting.")
+            else:
+                saved, save_err = _save_feedback(fb_role, fb_useful, fb_missing, fb_suggest, fb_rating)
+                st.session_state.feedback_submitted = True
+                st.session_state.feedback_saved = saved
+                st.session_state.feedback_error = save_err
 
     if st.session_state.feedback_submitted:
         _msg_slot = st.empty()
