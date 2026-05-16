@@ -1,7 +1,7 @@
 """
 FleetWise SA: Should I Build an Uber Fleet?
 A Data Science Portfolio Project
-Author: Ngobe | ALX Africa Data Science Certification
+Author: Ngobe | ALX Africa Data Science Certification 2024
 """
 
 import streamlit as st
@@ -11,6 +11,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import sys, os
+from datetime import datetime
+import gspread
+from google.oauth2.service_account import Credentials
 
 # ── PATH FIX ─────────────────────────────────────────────────────────────────
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -87,6 +90,44 @@ st.markdown("""
         text-align: center; font-size: 0.8rem; padding: 1rem;
         color: rgba(128,128,128,0.7);
     }
+
+    /* ── Landing page ── */
+    .landing-wrap {
+        max-width: 860px; margin: 3rem auto; padding: 0 1rem;
+    }
+    .landing-hero {
+        background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #0f3460 100%);
+        border-radius: 20px; padding: 3rem 2.5rem 2rem;
+        border: 1px solid rgba(255,255,255,0.08);
+        text-align: center; margin-bottom: 2.5rem;
+    }
+    .landing-hero h1 {
+        font-size: 3rem; font-weight: 700;
+        background: linear-gradient(90deg, #e94560, #f5a623, #4ecdc4);
+        -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        margin: 0 0 0.6rem 0;
+    }
+    .landing-hero p { color: rgba(255,255,255,0.65); font-size: 1.05rem; margin: 0; }
+    .landing-hero .tagline {
+        color: rgba(255,255,255,0.35); font-size: 0.82rem;
+        margin-top: 1rem; letter-spacing: 0.03em;
+    }
+    .role-card {
+        background: rgba(78,205,196,0.06);
+        border: 1px solid rgba(78,205,196,0.25);
+        border-radius: 14px; padding: 1.6rem 1.4rem;
+        cursor: pointer; transition: border-color 0.2s, transform 0.15s;
+        height: 100%;
+    }
+    .role-card:hover {
+        border-color: rgba(78,205,196,0.6);
+        transform: translateY(-2px);
+    }
+    .role-card .icon { font-size: 2.4rem; margin-bottom: 0.7rem; }
+    .role-card h3 { font-size: 1.15rem; font-weight: 700; margin: 0 0 0.4rem 0; }
+    .role-card p  { font-size: 0.88rem; color: rgba(128,128,128,0.9); margin: 0; line-height: 1.5; }
+    .role-card ul { font-size: 0.84rem; color: rgba(128,128,128,0.85);
+                    margin: 0.7rem 0 0 0; padding-left: 1.1rem; line-height: 1.8; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -107,6 +148,126 @@ def load_comparison(city):
 @st.cache_data
 def load_delta(city):
     return profit_delta(city)
+
+# ─── GOOGLE SHEETS CONNECTION ────────────────────────────────────────────────
+_GS_SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+@st.cache_resource
+def _get_sheet():
+    """Authenticate and return the FleetWise Feedback worksheet.
+    Returns None if credentials aren't configured (local dev).
+    """
+    try:
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=_GS_SCOPES,
+        )
+        client = gspread.authorize(creds)
+        sheet  = client.open_by_key(st.secrets["sheets"]["spreadsheet_id"])
+        return sheet.sheet1
+    except Exception:
+        return None
+
+def _save_feedback(role, useful, missing, suggest, rating):
+    """Append one feedback row to the Google Sheet.
+    Silently skips if the sheet connection is unavailable.
+    """
+    ws = _get_sheet()
+    if ws is None:
+        return False
+    try:
+        ws.append_row([
+            datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            role,
+            useful,
+            missing,
+            suggest,
+            rating,
+        ], value_input_option="USER_ENTERED")
+        return True
+    except Exception:
+        return False
+
+# ─── SESSION STATE ───────────────────────────────────────────────────────────
+if "role" not in st.session_state:
+    st.session_state.role = None
+if "feedback_submitted" not in st.session_state:
+    st.session_state.feedback_submitted = False
+
+# ─── LANDING PAGE ─────────────────────────────────────────────────────────────
+if st.session_state.role is None:
+    st.markdown('<div class="landing-wrap">', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="landing-hero">
+        <h1>🚗 FleetWise SA</h1>
+        <p>Should I Build an Uber Fleet?</p>
+        <p>A data-driven investment analysis for South African markets.</p>
+        <p class="tagline">ALX Africa Data Science Portfolio · Ngobe · 2024</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### Who are you?")
+    st.markdown("Pick the option that best describes you — we'll show you what's relevant.")
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    col_d, col_f, col_r = st.columns(3)
+
+    with col_d:
+        st.markdown("""
+        <div class="role-card">
+            <div class="icon">🚕</div>
+            <h3>Driver / Aspiring Driver</h3>
+            <p>You're thinking about buying a car and driving Uber to earn income.</p>
+            <ul>
+                <li>Find the best car for your budget</li>
+                <li>See your estimated monthly profit</li>
+                <li>Know your breakeven timeline</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("I'm a Driver →", key="role_driver", use_container_width=True):
+            st.session_state.role = "driver"
+            st.rerun()
+
+    with col_f:
+        st.markdown("""
+        <div class="role-card">
+            <div class="icon">📊</div>
+            <h3>Fleet Manager / Investor</h3>
+            <p>You already operate vehicles or you're planning to scale up a fleet.</p>
+            <ul>
+                <li>Model fleet growth & reinvestment</li>
+                <li>Compare 2024 vs 2026 market shifts</li>
+                <li>Assess risk across your portfolio</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("I'm a Fleet Manager →", key="role_fleet", use_container_width=True):
+            st.session_state.role = "fleet"
+            st.rerun()
+
+    with col_r:
+        st.markdown("""
+        <div class="role-card">
+            <div class="icon">🔍</div>
+            <h3>Researcher / Curious</h3>
+            <p>You want to understand the Uber vehicle market in South Africa.</p>
+            <ul>
+                <li>Explore market-wide EDA</li>
+                <li>Compare cities and tiers</li>
+                <li>Download the full dataset</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("I'm Exploring →", key="role_research", use_container_width=True):
+            st.session_state.role = "researcher"
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+    st.stop()
 
 # ─── CHART THEME ─────────────────────────────────────────────────────────────
 PLOTLY_CONFIG = {"displayModeBar": False}
@@ -149,7 +310,19 @@ def chart_layout(fig, height=None, **kwargs):
     return fig
 
 # ─── SIDEBAR ─────────────────────────────────────────────────────────────────
+# Role label + switch button at top of sidebar
+_ROLE_LABELS = {
+    "driver":     "🚕 Driver",
+    "fleet":      "📊 Fleet Manager",
+    "researcher": "🔍 Researcher",
+}
 with st.sidebar:
+    role_label = _ROLE_LABELS.get(st.session_state.role, "")
+    st.markdown(f"**Viewing as:** {role_label}")
+    if st.button("↩ Switch role", key="switch_role"):
+        st.session_state.role = None
+        st.rerun()
+    st.markdown("---")
     st.markdown("### ⚙️ Configuration")
     selected_city = st.selectbox("City", list(city_config.keys()), index=0,
                                  help="City affects demand and profitability")
@@ -224,17 +397,47 @@ with col5:
 
 st.markdown("---")
 
-# ─── TABS ─────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
-    "📊 EDA & Market Overview", "🏆 Vehicle Rankings", "🤖 ML Profit Predictor",
-    "📈 Fleet Growth Simulator", "⚠️ Risk Dashboard",
-    "📅 2024 vs 2026 Comparison", "📋 Full Dataset"
-])
+# ─── TABS — role-gated ────────────────────────────────────────────────────────
+_ALL_TABS = [
+    ("📊 EDA & Market Overview",   "eda"),
+    ("🏆 Vehicle Rankings",        "rankings"),
+    ("🤖 ML Profit Predictor",     "predictor"),
+    ("📈 Fleet Growth Simulator",  "simulator"),
+    ("⚠️ Risk Dashboard",          "risk"),
+    ("📅 2024 vs 2026 Comparison", "comparison"),
+    ("📋 Full Dataset",            "dataset"),
+    ("💬 Feedback",                "feedback"),
+]
+_ROLE_TABS = {
+    "driver":     ["rankings", "predictor", "risk", "feedback"],
+    "fleet":      ["simulator", "risk", "comparison", "dataset", "eda", "feedback"],
+    "researcher": ["eda", "comparison", "dataset", "feedback"],
+}
+_visible = _ROLE_TABS.get(st.session_state.role, [t[1] for t in _ALL_TABS])
+_tab_defs = [(label, key) for label, key in _ALL_TABS if key in _visible]
+_tab_labels = [label for label, _ in _tab_defs]
+_tab_keys   = [key   for _, key in _tab_defs]
+_tabs = st.tabs(_tab_labels)
+_tab_map = {key: tab for key, tab in zip(_tab_keys, _tabs)}
+
+# Convenience: pull each tab out (None if not visible for this role)
+def _t(key):
+    return _tab_map.get(key)
+
+tab1 = _t("eda")
+tab2 = _t("rankings")
+tab3 = _t("predictor")
+tab4 = _t("simulator")
+tab5 = _t("risk")
+tab6 = _t("comparison")
+tab7 = _t("dataset")
+tab_feedback = _t("feedback")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 · EDA
 # ══════════════════════════════════════════════════════════════════════════════
-with tab1:
+if tab1 is not None:
+  with tab1:
     st.markdown('<p class="section-title">Market Overview · Exploratory Data Analysis</p>', unsafe_allow_html=True)
     col_l, col_r = st.columns(2)
 
@@ -321,7 +524,8 @@ with tab1:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2 · RANKINGS
 # ══════════════════════════════════════════════════════════════════════════════
-with tab2:
+if tab2 is not None:
+  with tab2:
     st.markdown('<p class="section-title">Vehicle Rankings · Within Your Budget</p>', unsafe_allow_html=True)
 
     if df_budget.empty:
@@ -402,7 +606,8 @@ with tab2:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3 · ML PREDICTOR
 # ══════════════════════════════════════════════════════════════════════════════
-with tab3:
+if tab3 is not None:
+  with tab3:
     st.markdown('<p class="section-title">ML Profit Predictor · Enter Any Vehicle</p>', unsafe_allow_html=True)
     col_fi, col_pred = st.columns([1, 1])
 
@@ -459,7 +664,8 @@ with tab3:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 4 · FLEET GROWTH SIMULATOR
 # ══════════════════════════════════════════════════════════════════════════════
-with tab4:
+if tab4 is not None:
+  with tab4:
     st.markdown('<p class="section-title">Fleet Growth Simulator · Reinvest & Scale</p>', unsafe_allow_html=True)
     st.markdown("""
     <div class="insight-box">
@@ -525,7 +731,8 @@ with tab4:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 5 · RISK DASHBOARD
 # ══════════════════════════════════════════════════════════════════════════════
-with tab5:
+if tab5 is not None:
+  with tab5:
     st.markdown('<p class="section-title">Risk Dashboard · Know Before You Buy</p>', unsafe_allow_html=True)
 
     risk_df = df_full.copy()
@@ -582,7 +789,8 @@ with tab5:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 6 · 2024 vs 2026 COMPARISON
 # ══════════════════════════════════════════════════════════════════════════════
-with tab6:
+if tab6 is not None:
+  with tab6:
     st.markdown('<p class="section-title">2024 vs 2026 · What the Fuel Crisis Did to Fleet Profitability</p>', unsafe_allow_html=True)
 
     st.markdown("""
@@ -705,7 +913,8 @@ with tab6:
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 7 · FULL DATASET
 # ══════════════════════════════════════════════════════════════════════════════
-with tab7:
+if tab7 is not None:
+  with tab7:
     fuel_note = f"R{year_cfg['fuel_price']}/l"
     rate_note = f"{year_cfg['financing_rate']*100:.2f}%"
     st.markdown(f'<p class="section-title">Full Dataset · {selected_year} · {len(df_full)} South African Vehicles</p>', unsafe_allow_html=True)
@@ -734,6 +943,66 @@ with tab7:
         csv_both = both.to_csv(index=False).encode("utf-8")
         st.download_button("⬇️ Download Both Years (CSV)", csv_both,
                           "fleetwise_sa_2024_2026.csv", "text/csv")
+
+# ─── FEEDBACK TAB ────────────────────────────────────────────────────────────
+if tab_feedback is not None:
+  with tab_feedback:
+    st.markdown('<p class="section-title">Help Shape Version 2</p>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="insight-box">
+    💬 FleetWise SA is a live portfolio project. Your feedback directly influences what gets
+    built next — whether that's better mobile views, new vehicle categories, or a full
+    role-specific redesign. Takes 60 seconds.
+    </div>
+    """, unsafe_allow_html=True)
+
+    _ROLE_LABELS_FB = {
+        "driver":     "Driver / Aspiring Driver",
+        "fleet":      "Fleet Manager / Investor",
+        "researcher": "Researcher / Curious",
+    }
+    fb_role = _ROLE_LABELS_FB.get(st.session_state.role, "Unknown")
+
+    with st.form("feedback_form", clear_on_submit=True):
+        st.markdown(f"**Your role:** {fb_role}")
+        fb_useful = st.radio(
+            "Was this app useful for what you came to do?",
+            ["✅ Yes, it answered my question",
+             "🔶 Partially — I found some of it helpful",
+             "❌ Not really — I couldn't find what I needed"],
+            index=1
+        )
+        fb_missing = st.text_area(
+            "What were you trying to figure out? (optional)",
+            placeholder="e.g. I wanted to know if a Toyota Starlet makes sense in Cape Town on a R180k budget...",
+            height=100,
+        )
+        fb_suggest = st.text_area(
+            "What would make this more useful for you? (optional)",
+            placeholder="e.g. Add a repayment calculator, show more cities, simplify the ML tab...",
+            height=100,
+        )
+        fb_rating = st.slider("Overall rating", 1, 5, 3,
+                              help="1 = needs a lot of work · 5 = exactly what I needed")
+
+        submitted = st.form_submit_button("Submit Feedback", type="primary", use_container_width=True)
+        if submitted:
+            saved = _save_feedback(fb_role, fb_useful, fb_missing, fb_suggest, fb_rating)
+            st.session_state.feedback_submitted = True
+            st.session_state.feedback_saved = saved
+
+    if st.session_state.feedback_submitted:
+        if st.session_state.get("feedback_saved", False):
+            st.success("Saved. Thanks — that genuinely helps. The goal is to make version 2 actually useful for real people, not just impressive on a CV.")
+        else:
+            st.warning("Submitted, but couldn't reach the sheet right now. The response may not have been saved — try again or contact Ngobe directly.")
+        st.markdown("""
+        <div class="insight-box">
+        📌 <strong>What happens with your feedback?</strong><br>
+        Responses are reviewed to identify the most common unmet needs per user type.
+        Those become the feature brief for FleetWise SA v2.
+        </div>
+        """, unsafe_allow_html=True)
 
 # ─── FOOTER ──────────────────────────────────────────────────────────────────
 st.markdown("---")
