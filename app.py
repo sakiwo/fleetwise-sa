@@ -1,7 +1,7 @@
 """
 FleetWise SA: Should I Build an Uber Fleet?
 A Data Science Portfolio Project
-Author: Ngobe | ALX Africa Data Science Certification 2024
+Author: Ngobe | ALX Africa Data Science Certification
 """
 
 import streamlit as st
@@ -75,9 +75,36 @@ st.markdown("""
     .risk-med  { color: #d4890a; font-weight: 600; }
     .risk-high { color: #c0303e; font-weight: 600; }
 
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
-    .stTabs [data-baseweb="tab"] { border-radius: 8px; padding: 0.5rem 1.2rem; font-weight: 500; }
+    /* Tabs — scrollable on mobile */
+    .stTabs [data-baseweb="tab-list"] { gap: 4px; overflow-x: auto; flex-wrap: nowrap; }
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px; padding: 0.4rem 0.8rem;
+        font-weight: 500; font-size: 0.85rem; white-space: nowrap;
+    }
+
+    /* Plotly modebar — never covers chart title */
+    .modebar { display: none !important; }
+
+    /* ── Mobile overrides (≤640px) ─────────────────────────────────────── */
+    @media (max-width: 640px) {
+        .main-header { padding: 1.2rem 1.1rem; border-radius: 8px; }
+        .main-header h1 { font-size: 1.6rem; }
+        .main-header p  { font-size: 0.82rem; }
+        .section-title  { font-size: 1rem; }
+        .insight-box    { font-size: 0.82rem; padding: 0.7rem 0.85rem; }
+        .role-card h3   { font-size: 1rem; }
+
+        /* Stack columns vertically on narrow screens */
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 100% !important;
+        }
+
+        div[data-testid="metric-container"] {
+            padding: 0.5rem 0.6rem;
+        }
+    }
 
     /* Metric cards — use Streamlit surface colour, no hardcoded dark */
     div[data-testid="metric-container"] {
@@ -240,7 +267,7 @@ if st.session_state.role is None:
     """, unsafe_allow_html=True)
 
     st.markdown('<p style="font-size:1.5rem; font-weight:700; margin-bottom:0.2rem;">Who are you?</p>', unsafe_allow_html=True)
-    st.markdown("<p style='color:rgba(128,128,128,0.9); margin-top:0;'>Pick the option that best describes you — we'll show you what's relevant.</p>", unsafe_allow_html=True)
+    st.markdown("<p style='color:rgba(128,128,128,0.9); margin-top:0;'>Pick the option that best describes you</p>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     col_d, col_f, col_r = st.columns(3)
@@ -693,12 +720,27 @@ if tab3 is not None:
                         title="What Drives Monthly Profit?")
         chart_layout(fig_fi, height=360, showlegend=False, yaxis={"categoryorder": "total ascending"})
         st.plotly_chart(fig_fi, use_container_width=True, config=PLOTLY_CONFIG)
+        _profit_mae   = f"R{models['profit_mae']:,}"
+        _profit_r2    = models['profit_r2']
+        _roi_mae      = models['roi_mae']
+        _roi_r2       = models['roi_r2']
+        _be_mae       = models['be_mae']
+        _train_rows   = models['training_rows']
+        _train_desc   = models['training_desc']
         st.markdown(f"""
         <div class="insight-box">
         🤖 <strong>Model Performance</strong><br>
-        Profit Predictor R² = <strong>{models['profit_r2']:.3f}</strong><br>
-        ROI Predictor R² = <strong>{models['roi_r2']:.3f}</strong><br>
-        Algorithm: Random Forest + Gradient Boosting Ensemble
+        <strong>Profit Predictor</strong> — MAE: <strong>{_profit_mae}/month</strong>
+        &nbsp;·&nbsp; in-sample R² {_profit_r2}<br>
+        <strong>ROI Predictor</strong> &nbsp;&nbsp;&nbsp;&nbsp;— MAE: <strong>{_roi_mae}%</strong>
+        &nbsp;·&nbsp; in-sample R² {_roi_r2}<br>
+        <strong>Breakeven</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;— MAE: <strong>{_be_mae} months</strong><br>
+        <br>
+        <span style="font-size:0.82rem; opacity:0.75;">
+        Trained on {_train_rows} samples ({_train_desc}).
+        MAE shown — not CV R² — because the dataset is engineered from known formulas.
+        In-sample R² &gt;0.97 confirms the models have learned the relationships correctly.
+        </span>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1064,11 +1106,10 @@ if tab_feedback is not None:
         st.markdown(f"**Your role:** {fb_role}")
         fb_useful = st.radio(
             "Was this app useful for what you came to do?",
-            ["— select one —",
-             "✅ Yes, it answered my question",
+            ["✅ Yes, it answered my question",
              "🔶 Partially — I found some of it helpful",
              "❌ Not really — I couldn't find what I needed"],
-            index=0
+            index=1
         )
         fb_missing = st.text_area(
             "What were you trying to figure out? (optional)",
@@ -1080,21 +1121,15 @@ if tab_feedback is not None:
             placeholder="e.g. Add a repayment calculator, show more cities, simplify the ML tab...",
             height=100,
         )
-        fb_rating = st.select_slider(
-            "Overall rating",
-            options=["1 — needs a lot of work", "2", "3 — decent", "4", "5 — exactly what I needed"],
-            help="Drag to select your rating"
-        )
+        fb_rating = st.slider("Overall rating", 1, 5, 3,
+                              help="1 = needs a lot of work · 5 = exactly what I needed")
 
         submitted = st.form_submit_button("Submit Feedback", type="primary", use_container_width=True)
         if submitted:
-            if fb_useful == "— select one —":
-                st.warning("Please select whether the app was useful before submitting.")
-            else:
-                saved, save_err = _save_feedback(fb_role, fb_useful, fb_missing, fb_suggest, fb_rating)
-                st.session_state.feedback_submitted = True
-                st.session_state.feedback_saved = saved
-                st.session_state.feedback_error = save_err
+            saved, save_err = _save_feedback(fb_role, fb_useful, fb_missing, fb_suggest, fb_rating)
+            st.session_state.feedback_submitted = True
+            st.session_state.feedback_saved = saved
+            st.session_state.feedback_error = save_err
 
     if st.session_state.feedback_submitted:
         _msg_slot = st.empty()
