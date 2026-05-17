@@ -26,7 +26,7 @@ The fuel crisis of 2026 (petrol at R26.63/litre, up 18% from 2024) made this ana
 
 ---
 
-## What's New in v1.1
+## What's New in v1.2
 
 This version moves well beyond a standard data science notebook. Several significant additions were made after the initial build based on real user feedback and deployment learnings.
 
