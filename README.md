@@ -216,7 +216,6 @@ spreadsheet_id = "your_spreadsheet_id_here"
 ## Author
 
 **Sakiwo Sibango (NGOBE)**
-ALX Africa Data Science Certification, 2024–2026
-Higher Certificate in Mathematics and Statistics, UNISA
+ALX Africa Data Science Certification
 
 *This project was built to solve a real problem — and to demonstrate that data science is most valuable when it's applied to decisions that actually matter.*
