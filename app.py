@@ -378,7 +378,7 @@ with st.sidebar:
         if st.button("🗺️ Restart tour", key="sidebar_restart_tour", use_container_width=True):
             st.session_state.tour_step = 1
             st.rerun()
-    st.caption("FleetWise SA v1.1 | NGOBE")
+    st.caption("FleetWise SA v1.2 | NGOBE")
 
 # ─── ONBOARDING GUIDE ────────────────────────────────────────────────────────
 # ─── TOUR DEFINITIONS ────────────────────────────────────────────────────────
